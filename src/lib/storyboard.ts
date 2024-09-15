@@ -1,4 +1,3 @@
-// src/lib/storyboard.ts
 import { client } from "./graphql";
 
 export interface Storyboard {
@@ -27,5 +26,3 @@ export const addStoryboard = async (
   const data = await client.request(mutation, variables);
   return data.insert_storyboards_one;
 };
-
-// Benzer şekilde, get, update ve delete fonksiyonları ekleyebilirsiniz.

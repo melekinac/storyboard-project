@@ -1,7 +1,6 @@
 import { client } from "$lib/graphql-client";
 import { gql } from "graphql-request";
 
-// GraphQL sorgusu
 const GET_STORYBOARDS = gql`
   query {
     storyboard {

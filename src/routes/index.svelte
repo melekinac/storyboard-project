@@ -1,14 +1,14 @@
 <script context="module" lang="ts">
     import { GraphQLClient, gql } from 'graphql-request';
      
-    // GraphQL Client
+  
     const client = new GraphQLClient('http://localhost:8081/v1/graphql', {
       headers: {
         'x-hasura-admin-secret': 'myadminsecretkey',
       },
     });
   
-    // Login query
+
     const loginQuery = gql`
       query Login($email: String!) {
         storyboarddb_peoples(where: { peoles_email: { _eq: $email } }) {
@@ -51,7 +51,6 @@
     }
   </script>
   
-  <!-- HTML -->
   <h1>Login</h1>
   
   <p>{message}</p>
