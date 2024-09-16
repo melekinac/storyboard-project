@@ -33,17 +33,7 @@
         const variables = { email };
         const data = await client.request(loginQuery, variables);
   console.log(data +"aaaaa")
-       /* if (data.storyboarddb_peoples.length) {
-          const user = data.storyboarddb_peoples[0];
-          const isValidPassword = await bcrypt.compare(password, user.peoples_password);
-          if (isValidPassword) {
-            message = `Welcome back, ${user.peoples_nickname}!`;
-          } else {
-            message = 'Incorrect password. Please try again.';
-          }
-        } else {
-          message = 'User not found. Please register.';
-        }*/
+       
       } catch (error) {
         console.error('Error logging in:', error);
         message = `Error logging in: ${error}`;

@@ -7,12 +7,15 @@
 
   let people_id: string | null = null;
   let storyboards = [];
-  let file: File | null = null;
+
   let comments = {};
   let commentTexts = {};
   let title = '';
   let text = '';
+  let file: File | null = null;
   let fileUrl: string | null = null;
+  let files = [];
+
   
   let isAddModalOpen = false;
   let isEditModalOpen = false;
@@ -33,29 +36,6 @@
   userStore.subscribe((user) => {
     people_id = user.people_id;
   });
-  async function uploadFile() {
-    if (file) {
-      const formData = new FormData();
-      formData.append('file', file);
-
- 
-      try {
-        const response = await fetch('/uploads', {
-          method: 'POST',
-          body: formData
-        });
-
-        if (!response.ok) {
-          throw new Error('File upload failed');
-        }
-
-        const result = await response.json();
-        fileUrl = result.fileUrl; 
-      } catch (error) {
-        console.error('Error uploading file:', error);
-      }
-    }
-  }
 
   
   const ADD_STORYBOARD = gql`
@@ -81,24 +61,24 @@
       }
     }
   `;
-
   const UPDATE_STORYBOARD = gql`
-    mutation UpdateStoryboard($storyboard_id: uuid!, $title: String!, $text: String!) {
-      update_storyboard_by_pk(
-        pk_columns: { storyboard_id: $storyboard_id }
-        _set: { storyboard_title: $title, storyboard_text: $text }
-      ) {
-        storyboard_id
-        storyboard_title
-        storyboard_text
-                 people {     
-      people_nickname
-     
-    }   
-        
+  mutation UpdateStoryboard($storyboard_id: uuid!, $title: String!, $text: String!, $media_url: String) {
+    update_storyboard_by_pk(
+      pk_columns: { storyboard_id: $storyboard_id }
+      _set: { storyboard_title: $title, storyboard_text: $text, storyboard_media_url: $media_url }
+    ) {
+      storyboard_id
+      storyboard_title
+      storyboard_text
+      storyboard_media_url
+      people {
+        people_nickname
       }
     }
-  `;
+  }
+`;
+
+
 
   const ADD_COMMENT = gql`
     mutation AddComment($text: String!, $storyboard_id: uuid!, $people_id: uuid!) {
@@ -290,6 +270,33 @@
   function closeEditCommentModal() {
     isEditCommentModalOpen = false;
   }
+  async function uploadFile() {
+  if (file) {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('File upload failed');
+      }
+
+      const result = await response.json();
+      fileUrl = result.fileUrl;
+      console.log('Uploaded file URL:', fileUrl);
+    } catch (error) {
+      console.error('Error uploading file:', error);
+      alert('File upload failed. Please try again.');
+    }
+  }
+}
+
+
+
 
   async function addStoryboard() {
     if (!title || !text) {
@@ -325,22 +332,39 @@
   }
 
   async function updateStoryboard() {
-    if (!editTitle || !editText || !storyboardId) return;
+  if (!editTitle || !editText || !storyboardId) return;
 
-    try {
-      const variables = { storyboard_id: storyboardId, title: editTitle, text: editText };
-      const response = await client.request(UPDATE_STORYBOARD, variables);
-      const index = storyboards.findIndex(sb => sb.storyboard_id === storyboardId);
-      if (index !== -1) {
-        storyboards[index].storyboard_title = editTitle;
-        storyboards[index].storyboard_text = editText;
-      }
-      closeEditModal();
-    } catch (error) {
-      console.error('Error updating storyboard:', error);
-      alert(`Error updating storyboard: ${error.message}`);
-    }
+  let media_url = null;
+
+
+  if (file) {
+    await uploadFile(); 
+    media_url = fileUrl; 
+  } else {
+    media_url = storyboards.find(sb => sb.storyboard_id === storyboardId)?.storyboard_media_url || null;
   }
+
+  try {
+    const variables = { storyboard_id: storyboardId, title: editTitle, text: editText, media_url };
+    const response = await client.request(UPDATE_STORYBOARD, variables);
+
+    const index = storyboards.findIndex(sb => sb.storyboard_id === storyboardId);
+    if (index !== -1) {
+      storyboards[index].storyboard_title = editTitle;
+      storyboards[index].storyboard_text = editText;
+      storyboards[index].storyboard_media_url = media_url;  
+    }
+
+    await loadStoryboards(); 
+    closeEditModal();
+  } catch (error) {
+    console.error('Error updating storyboard:', error);
+    alert(`Error updating storyboard: ${error.message}`);
+  }
+}
+
+
+
 
   async function deleteStoryboard(storyboard_id: string) {
     if (confirm('Are you sure you want to delete this storyboard?')) {
@@ -359,31 +383,26 @@
   });
 </script>
 
-
 <Modal title="Add a New Storyboard" isOpen={isAddModalOpen} closeModal={closeAddModal}>
   <div class="flex flex-col space-y-4">
     <input class="border p-2 rounded-lg" type="text" bind:value={title} placeholder="Enter storyboard title" />
     <textarea class="border p-2 rounded-lg" bind:value={text} placeholder="Enter storyboard text"></textarea>
-    <input class="border p-2 rounded-lg" type="file" on:change={(e) => { file = e.target.files[0]; }} />
+    <input class="border p-2 rounded-lg" type="file" on:change={(e) => { file = e.target.files[0]; }} /> 
     <button class="bg-blue-500 text-white px-4 py-2 rounded-lg" on:click={addStoryboard}>Add Storyboard</button>
   </div>
 </Modal>
+
 <Modal title="Edit Storyboard" isOpen={isEditModalOpen} closeModal={closeEditModal}>
   <div class="flex flex-col space-y-4">
     <input class="border p-2 rounded-lg" type="text" bind:value={editTitle} placeholder="Edit storyboard title" />
     <textarea class="border p-2 rounded-lg" bind:value={editText} placeholder="Edit storyboard text"></textarea>
+    <input class="border p-2 rounded-lg" type="file" on:change={(e) => { file = e.target.files[0]; }} /> 
+
     <button class="bg-green-500 text-white px-4 py-2 rounded-lg" on:click={updateStoryboard}>Update Storyboard</button>
   </div>
 </Modal>
 
 
-<Modal title="View Full Storyboard" isOpen={isViewModalOpen} closeModal={closeViewModal}>
-  <div class="flex flex-col space-y-4">
- 
-    <p class="whitespace-pre-wrap break-words">{fullText}</p>
-    <button class="bg-blue-500 text-white px-4 py-2 rounded-lg" on:click={closeViewModal}>Close</button>
-  </div>
-</Modal>
 
 
 <Modal title="Edit Comment" isOpen={isEditCommentModalOpen} closeModal={closeEditCommentModal}>
@@ -403,18 +422,26 @@
       {#each storyboards as storyboard}
         <div class="bg-white shadow-lg rounded-lg p-6">
          
-          {#if storyboard.storyboard_media_url}
-            {#if storyboard.storyboard_media_url.includes('image')}
-              <img src={storyboard.storyboard_media_url} alt="Uploaded media" class="w-full h-auto mb-4" />
-            {:else if storyboard.storyboard_media_url.includes('.docx') || storyboard.storyboard_media_url.includes('.xlsx')}
-              <a href={storyboard.storyboard_media_url} class="text-blue-500 underline">Download Document</a>
-            {:else}
-              <p class="text-gray-600">File uploaded: {storyboard.storyboard_media_url}</p>
+         
+          <div class="w-full h-48 bg-gray-100 flex justify-center items-center overflow-hidden rounded-lg mb-4">
+            {#if storyboard.storyboard_media_url}
+              {#if storyboard.storyboard_media_url.includes('.jpg') || storyboard.storyboard_media_url.includes('.jpeg') || storyboard.storyboard_media_url.includes('.png') || storyboard.storyboard_media_url.includes('.gif')}
+            
+                <img src={storyboard.storyboard_media_url} alt="Uploaded media" class="object-cover h-full w-full" style="object-fit: contain;" />
+              {:else if storyboard.storyboard_media_url.includes('.pdf')}
+              
+                <embed src={storyboard.storyboard_media_url} type="application/pdf" class="h-full w-full" style="object-fit: contain;" />
+              {:else if storyboard.storyboard_media_url.includes('.docx') || storyboard.storyboard_media_url.includes('.xlsx')}
+          
+                <img src="/path/to/document-icon.png" alt="Document Icon" class="object-cover h-full w-full" style="object-fit: contain;" />
+              {:else}
+        
+                <img src="/path/to/file-icon.png" alt="File Icon" class="object-cover h-full w-full" style="object-fit: contain;" />
+              {/if}
             {/if}
-          {/if}
+          </div>
   
           <h3 class="text-xl font-bold">{storyboard.storyboard_title}</h3>
-  
           <p class="text-gray-600 whitespace-pre-wrap break-words">
             {#if storyboard.storyboard_text.length > 100}
               {storyboard.storyboard_text.slice(0, 100)}...
@@ -423,12 +450,18 @@
               {storyboard.storyboard_text}
             {/if}
           </p>
-  
+          
+          <Modal title="View Full Storyboard" isOpen={isViewModalOpen} closeModal={closeViewModal}>
+            <div class="flex flex-col space-y-4 max-h-96 overflow-y-auto p-4">
+              <p class="whitespace-pre-wrap break-words">{fullText}</p>
+              <button class="bg-blue-500 text-white px-4 py-2 rounded-lg self-end" on:click={closeViewModal}>Close</button>
+            </div>
+          </Modal>
           <p class="text-sm text-gray-400">
             <strong>Created at:</strong> {new Date(storyboard.storyboard_created_date_time).toLocaleString()}
           </p>
           <p class="text-sm text-gray-400">
-            <strong>People ID:</strong> {storyboard.people.people_nickname}
+            <strong>People Nickname:</strong> {storyboard.people.people_nickname}
           </p>
   
           {#if storyboard.people_id === people_id}
@@ -438,7 +471,6 @@
             </div>
           {/if}
   
-     
           <div class="mt-4">
             <input class="border p-2 rounded-lg w-full mb-2" type="text" placeholder="Add a comment..." bind:value={commentTexts[storyboard.storyboard_id]} />
             <button class="bg-green-500 text-white px-3 py-1 rounded-lg" on:click={() => addComment(storyboard.storyboard_id)}>Add Comment</button>
