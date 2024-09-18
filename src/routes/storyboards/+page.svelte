@@ -39,20 +39,20 @@
 
   
   const ADD_STORYBOARD = gql`
-    mutation AddStoryboard($title: String!, $text: String!, $people_id: uuid!, $media_url: String) {
-      insert_storyboard_one(object: { storyboard_title: $title, storyboard_text: $text, people_id: $people_id, storyboard_media_url: $media_url }) {
-        storyboard_id
-        storyboard_title
-        storyboard_text
-        people_id
-        storyboard_created_date_time
-        storyboard_media_url
-        people {     
-          people_nickname
-        }
+  mutation AddStoryboard($title: String!, $text: String!, $people_id: uuid!) {
+    insert_storyboard_one(object: { storyboard_title: $title, storyboard_text: $text, people_id: $people_id }) {
+      storyboard_id
+      storyboard_title
+      storyboard_text
+      people_id
+      storyboard_created_date_time
+      people {     
+        people_nickname
       }
     }
-  `;
+  }
+`;
+
 
   const DELETE_STORYBOARD = gql`
     mutation DeleteStoryboard($storyboard_id: uuid!) {
@@ -62,22 +62,20 @@
     }
   `;
   const UPDATE_STORYBOARD = gql`
-  mutation UpdateStoryboard($storyboard_id: uuid!, $title: String!, $text: String!, $media_url: String) {
+  mutation UpdateStoryboard($storyboard_id: uuid!, $title: String!, $text: String!) {
     update_storyboard_by_pk(
       pk_columns: { storyboard_id: $storyboard_id }
-      _set: { storyboard_title: $title, storyboard_text: $text, storyboard_media_url: $media_url }
+      _set: { storyboard_title: $title, storyboard_text: $text }
     ) {
       storyboard_id
       storyboard_title
       storyboard_text
-      storyboard_media_url
       people {
         people_nickname
       }
     }
   }
 `;
-
 
 
   const ADD_COMMENT = gql`
@@ -132,34 +130,127 @@
       }
     }
   `;
-
-  const GET_STORYBOARDS = gql`
-    query {
+  const GET_STORYBOARD = gql`
+  query GetStoryboardFrames {
+    storyboard_frame {
+      storyboard_frame_created_date_time
+      storyboard_frame_id
+      storyboard_frame_media_url
+      storyboard_id
       storyboard {
+        storyboard_created_date_time
         storyboard_id
-        storyboard_title
-        storyboard_text
-        people_id
-         people {     
-      people_nickname
-        }  
-       storyboard_created_date_time
         storyboard_media_url
+        storyboard_text
+        storyboard_title
+        people_id
+        people {
+          people_nickname
+        }
       }
-    }
-  `;
-
-  async function loadStoryboards() {
-    try {
-      const response = await client.request(GET_STORYBOARDS);
-      storyboards = response.storyboard;
-      for (let sb of storyboards) {
-        await loadComments(sb.storyboard_id);
-      }
-    } catch (error) {
-      console.error('Error loading storyboards:', error);
     }
   }
+`;
+
+const GET_STORYBOARD_FRAMES = gql`
+query GetStoryboardFrames($storyboard_id: uuid!) {
+  storyboard_frame(where: { storyboard_id: { _eq: $storyboard_id } }) {
+    storyboard_frame_created_date_time
+    storyboard_frame_id
+    storyboard_frame_media_url
+    storyboard_id
+    storyboard {
+      storyboard_created_date_time
+      storyboard_id
+      storyboard_media_url
+      storyboard_text
+      storyboard_title
+      people_id
+      people {
+        people_nickname
+      }
+    }
+  }
+}
+`;
+
+  const ADD_STORYBOARD_FRAME = gql`
+  mutation AddStoryboardFrame($storyboard_id: uuid!, $media_url: String!) {
+    insert_storyboard_frame_one(object: { storyboard_id: $storyboard_id, storyboard_frame_media_url: $media_url }) {
+      storyboard_frame_id
+      storyboard_frame_media_url
+      storyboard_id
+    }
+  }
+`;
+const UPDATE_STORYBOARD_FRAME = gql`
+  mutation UpdateStoryboardFrame($storyboard_frame_id: uuid!, $media_url: String!) {
+    update_storyboard_frame_by_pk(
+      pk_columns: { storyboard_frame_id: $storyboard_frame_id }
+      _set: { storyboard_frame_media_url: $media_url }
+    ) {
+      storyboard_frame_id
+      storyboard_frame_media_url
+      storyboard_id
+      storyboard {
+        people_id
+        storyboard_id
+      }
+    }
+  }
+`;
+
+const DELETE_STORYBOARD_FRAME = gql`
+  mutation DeleteStoryboardFrame($storyboard_id: uuid!) {
+    delete_storyboard_frame(where: { storyboard_id: { _eq: $storyboard_id } }) {
+      affected_rows
+    }
+  }
+`;
+async function updateStoryboardFrame(storyboard_frame_id: string, file: File | null) {
+  let media_url = null;
+
+  if (file) {
+    await uploadFile();  
+    media_url = fileUrl;
+    console.log('Media URL to update:', media_url); 
+  }
+
+  if (!storyboard_frame_id) {
+    console.error('Missing storyboard_frame_id');  
+    return;
+  }
+
+  try {
+    const variables = { storyboard_frame_id, media_url };
+    const response = await client.request(UPDATE_STORYBOARD_FRAME, variables);
+    console.log('Updated frame response:', response);
+  } catch (error) {
+    console.error('GraphQL Error:', error);  
+  }
+}
+
+
+
+async function loadStoryboards() {
+  try {
+    const response = await client.request(GET_STORYBOARD);
+  
+    storyboards = response.storyboard_frame.map((frame) => ({
+      ...frame.storyboard,
+      storyboard_frame_media_url: frame.storyboard_frame_media_url,
+      storyboard_frame_created_date_time: frame.storyboard_frame_created_date_time,
+    }));
+
+   
+    for (let sb of storyboards) {
+      await loadComments(sb.storyboard_id);
+    }
+  } catch (error) {
+    console.error('Error loading storyboards:', error);
+  }
+}
+
   onMount(() => {
     loadStoryboards();
   });
@@ -286,8 +377,8 @@
       }
 
       const result = await response.json();
-      fileUrl = result.fileUrl;
-      console.log('Uploaded file URL:', fileUrl);
+      fileUrl = result.fileUrl;  
+      console.log('Uploaded file URL:', fileUrl); 
     } catch (error) {
       console.error('Error uploading file:', error);
       alert('File upload failed. Please try again.');
@@ -296,66 +387,84 @@
 }
 
 
-
-
-  async function addStoryboard() {
-    if (!title || !text) {
-      alert('Please fill in all fields');
-      return;
-    }
-
-    if (!people_id) {
-      alert('User ID not found. Please make sure you are logged in.');
-      return;
-    }
-
-    let media_url = null;
-    if (file) {
-      await uploadFile();
-      media_url = fileUrl; 
-    }
-
-    try {
-      const variables = { title, text, people_id, media_url };
-      const response = await client.request(ADD_STORYBOARD, variables);
-      storyboards.push(response.insert_storyboard_one);
-      await loadStoryboards();
-      title = '';
-      text = '';
-      file = null;
-      fileUrl = null;  
-      closeAddModal();
-    } catch (error) {
-      console.error('Error adding storyboard:', error);
-      alert(`Error adding storyboard: ${error.message}`);
-    }
+async function addStoryboard() {
+  if (!title || !text) {
+    alert('Please fill in all fields');
+    return;
   }
 
-  async function updateStoryboard() {
-  if (!editTitle || !editText || !storyboardId) return;
+  if (!people_id) {
+    alert('User ID not found. Please make sure you are logged in.');
+    return;
+  }
 
   let media_url = null;
+  if (file) {
+    await uploadFile();
+    media_url = fileUrl; 
+  }
 
+  try {
+    const variables = { title, text, people_id };
+    const response = await client.request(ADD_STORYBOARD, variables);
+    storyboards.push(response.insert_storyboard_one);
+
+    if (media_url) {
+      const storyboardId = response.insert_storyboard_one.storyboard_id;
+      await client.request(ADD_STORYBOARD_FRAME, { storyboard_id: storyboardId, media_url });
+    }
+
+    await loadStoryboards();
+    title = '';
+    text = '';
+    file = null;
+    fileUrl = null;
+    closeAddModal();
+  } catch (error) {
+    console.error('Error adding storyboard:', error);
+    alert(`Error adding storyboard: ${error.message}`);
+  }
+}
+
+async function updateStoryboard() {
+  if (!editTitle || !editText || !storyboardId) {
+    console.error("Storyboard ID veya başlık/metin eksik");
+    return;
+  }
+
+  let media_url = null;
+  let storyboard_frame_id = null;
 
   if (file) {
     await uploadFile(); 
     media_url = fileUrl; 
-  } else {
-    media_url = storyboards.find(sb => sb.storyboard_id === storyboardId)?.storyboard_media_url || null;
   }
 
   try {
-    const variables = { storyboard_id: storyboardId, title: editTitle, text: editText, media_url };
-    const response = await client.request(UPDATE_STORYBOARD, variables);
 
-    const index = storyboards.findIndex(sb => sb.storyboard_id === storyboardId);
-    if (index !== -1) {
-      storyboards[index].storyboard_title = editTitle;
-      storyboards[index].storyboard_text = editText;
-      storyboards[index].storyboard_media_url = media_url;  
+    const variables = { storyboard_id: storyboardId, title: editTitle, text: editText };
+    await client.request(UPDATE_STORYBOARD, variables);
+
+  
+    if (media_url) {
+  console.log('Storyboard ID:', storyboardId); 
+  const frameResponse = await client.request(GET_STORYBOARD_FRAMES, { storyboard_id: storyboardId });
+
+  if (frameResponse.storyboard_frame && frameResponse.storyboard_frame.length > 0) {
+    storyboard_frame_id = frameResponse.storyboard_frame[0].storyboard_frame_id;
+    console.log('Storyboard Frame ID:', storyboard_frame_id);  
+    
+     
+    if (storyboard_frame_id) {
+      await client.request(UPDATE_STORYBOARD_FRAME, { storyboard_frame_id, media_url });
+    } else {
+      console.error('No storyboard_frame found for this storyboard');
     }
+  }
+}
 
-    await loadStoryboards(); 
+
+    await loadStoryboards();
     closeEditModal();
   } catch (error) {
     console.error('Error updating storyboard:', error);
@@ -364,20 +473,18 @@
 }
 
 
-
-
-  async function deleteStoryboard(storyboard_id: string) {
-    if (confirm('Are you sure you want to delete this storyboard?')) {
-      try {
-        await client.request(DELETE_STORYBOARD, { storyboard_id });
-        storyboards = storyboards.filter(sb => sb.storyboard_id !== storyboard_id);
-      } catch (error) {
-        console.error('Error deleting storyboard:', error);
-        alert(`Error deleting storyboard: ${error.message}`);
-      }
+async function deleteStoryboard(storyboard_id: string) {
+  if (confirm('Are you sure you want to delete this storyboard?')) {
+    try {
+      await client.request(DELETE_STORYBOARD_FRAME, { storyboard_id });
+      await client.request(DELETE_STORYBOARD, { storyboard_id });
+      storyboards = storyboards.filter(sb => sb.storyboard_id !== storyboard_id);
+    } catch (error) {
+      console.error('Error deleting storyboard:', error);
+      alert(`Error deleting storyboard: ${error.message}`);
     }
   }
-
+}
   onMount(() => {
     loadStoryboards();
   });
@@ -411,8 +518,12 @@
     <button class="bg-green-500 text-white px-4 py-2 rounded-lg" on:click={updateComment}>Update Comment</button>
   </div>
 </Modal>
-
-
+<Modal title="View Full Storyboard" isOpen={isViewModalOpen} closeModal={closeViewModal}>
+  <div class="flex flex-col space-y-4 max-h-96 overflow-y-auto p-4">
+    <p class="whitespace-pre-wrap break-words">{fullText}</p>
+    <button class="bg-blue-500 text-white px-4 py-2 rounded-lg self-end" on:click={closeViewModal}>Close</button>
+  </div>
+</Modal>
 <div class="flex flex-col items-center">
   <h1 class="text-3xl font-bold mb-4">Storyboards</h1>
 
@@ -421,26 +532,20 @@
     {#if storyboards.length > 0}
       {#each storyboards as storyboard}
         <div class="bg-white shadow-lg rounded-lg p-6">
-         
-         
           <div class="w-full h-48 bg-gray-100 flex justify-center items-center overflow-hidden rounded-lg mb-4">
-            {#if storyboard.storyboard_media_url}
-              {#if storyboard.storyboard_media_url.includes('.jpg') || storyboard.storyboard_media_url.includes('.jpeg') || storyboard.storyboard_media_url.includes('.png') || storyboard.storyboard_media_url.includes('.gif')}
-            
-                <img src={storyboard.storyboard_media_url} alt="Uploaded media" class="object-cover h-full w-full" style="object-fit: contain;" />
-              {:else if storyboard.storyboard_media_url.includes('.pdf')}
-              
-                <embed src={storyboard.storyboard_media_url} type="application/pdf" class="h-full w-full" style="object-fit: contain;" />
-              {:else if storyboard.storyboard_media_url.includes('.docx') || storyboard.storyboard_media_url.includes('.xlsx')}
-          
+            {#if storyboard.storyboard_frame_media_url}
+              {#if storyboard.storyboard_frame_media_url.match(/\.(jpg|jpeg|png|gif)$/i)}
+                <img src={storyboard.storyboard_frame_media_url} alt="Uploaded media" class="object-cover h-full w-full" style="object-fit: contain;" />
+              {:else if storyboard.storyboard_frame_media_url.match(/\.pdf$/i)}
+                <embed src={storyboard.storyboard_frame_media_url} type="application/pdf" class="h-full w-full" style="object-fit: contain;" />
+              {:else if storyboard.storyboard_frame_media_url.match(/\.(docx|xlsx)$/i)}
                 <img src="/path/to/document-icon.png" alt="Document Icon" class="object-cover h-full w-full" style="object-fit: contain;" />
               {:else}
-        
                 <img src="/path/to/file-icon.png" alt="File Icon" class="object-cover h-full w-full" style="object-fit: contain;" />
               {/if}
             {/if}
           </div>
-  
+
           <h3 class="text-xl font-bold">{storyboard.storyboard_title}</h3>
           <p class="text-gray-600 whitespace-pre-wrap break-words">
             {#if storyboard.storyboard_text.length > 100}
@@ -450,27 +555,21 @@
               {storyboard.storyboard_text}
             {/if}
           </p>
-          
-          <Modal title="View Full Storyboard" isOpen={isViewModalOpen} closeModal={closeViewModal}>
-            <div class="flex flex-col space-y-4 max-h-96 overflow-y-auto p-4">
-              <p class="whitespace-pre-wrap break-words">{fullText}</p>
-              <button class="bg-blue-500 text-white px-4 py-2 rounded-lg self-end" on:click={closeViewModal}>Close</button>
-            </div>
-          </Modal>
+
           <p class="text-sm text-gray-400">
             <strong>Created at:</strong> {new Date(storyboard.storyboard_created_date_time).toLocaleString()}
           </p>
           <p class="text-sm text-gray-400">
             <strong>People Nickname:</strong> {storyboard.people.people_nickname}
           </p>
-  
+
           {#if storyboard.people_id === people_id}
             <div class="flex justify-end space-x-2 mt-4">
               <button class="bg-yellow-500 text-white px-3 py-1 rounded-lg" on:click={() => openEditModal(storyboard)}>Edit</button>
               <button class="bg-red-500 text-white px-3 py-1 rounded-lg" on:click={() => deleteStoryboard(storyboard.storyboard_id)}>Delete</button>
             </div>
           {/if}
-  
+
           <div class="mt-4">
             <input class="border p-2 rounded-lg w-full mb-2" type="text" placeholder="Add a comment..." bind:value={commentTexts[storyboard.storyboard_id]} />
             <button class="bg-green-500 text-white px-3 py-1 rounded-lg" on:click={() => addComment(storyboard.storyboard_id)}>Add Comment</button>
@@ -499,4 +598,4 @@
       {/each}
     {/if}
   </div>
-</div>
+</div>  

@@ -19,8 +19,9 @@
 		"postcss": "^8.4.47",
 		"svelte": "^4.2.7",
 		"svelte-check": "^4.0.0",
+		"svelte-preprocess": "^6.0.2",
 		"tailwindcss": "^3.4.11",
-		"typescript": "^5.0.0",
+		"typescript": "^5.6.2",
 		"vite": "^5.0.3"
 	},
 	"type": "module",
