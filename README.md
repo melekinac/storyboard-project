@@ -1,38 +1,90 @@
-# create-svelte
+# Storyboard Project
 
-Everything you need to build a Svelte project, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+This is a Svelte project created using `create-svelte`. It includes Docker support for containerized development and local environments.
 
-## Creating a project
+## Prerequisites
 
-If you're seeing this, you've probably already done this step. Congrats!
+Before running the project, ensure you have the following installed:
+
+- [Node.js](https://nodejs.org/en/) (v20 or later)
+- [Docker](https://www.docker.com/) and [Docker Compose](https://docs.docker.com/compose/)
+- [npm](https://www.npmjs.com/)
+
+## Setup
+
+Follow these steps to get the project up and running.
+
+### 1. Cloning the Repository
+
+Clone this repository to your local machine:
 
 ```bash
-# create a new project in the current directory
-npm create svelte@latest
-
-# create a new project in my-app
-npm create svelte@latest my-app
+git clone https://github.com/melekinac/storyboard-project.git
+cd storyboard-project
 ```
 
-## Developing
+### 2. Installing Dependencies
 
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+Install all project dependencies by running:
+
+```bash
+npm install
+```
+
+### 3. Running the Project with Docker
+
+To run the project in a containerized environment with Docker:
+
+```bash
+docker-compose up --build
+```
+
+This will build the Docker containers and start the application.
+
+To run the project in the background (detached mode), use:
+
+```bash
+docker-compose up -d
+```
+
+You can stop the containers with:
+
+```bash
+docker-compose down
+```
+
+### 4. Running Locally (Without Docker)
+
+If you prefer to run the project locally without Docker, use the following commands:
 
 ```bash
 npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
 ```
 
-## Building
+### File Structure
 
-To create a production version of your app:
+Here is an overview of the key directories and files in the project:
 
-```bash
-npm run build
-```
+#### /src: Contains all the source code.
 
-You can preview the production build with `npm run preview`.
+#### /routes: The routes for the SvelteKit app.
 
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
+#### /style/global.css: Global styles for the app.
+
+#### /public: Static assets served by the app.
+
+#### /docker-compose.yml: Docker configuration file for setting up services.
+
+#### /Dockerfile: Dockerfile for building the app container.
+
+#### init.sql: SQL script for initializing the database (if applicable).
+
+### Technologies Used
+
+#### SvelteKit: For building the app.
+
+#### TailwindCSS: For styling.
+
+#### Docker: For containerization.
+
+#### PostgreSQL: As the database (optional, can be configured in the Docker setup).
